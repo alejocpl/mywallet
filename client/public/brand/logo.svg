@@ -1,0 +1,23 @@
+<!--
+  REEMPLAZABLE: Logo principal de MyWallet.
+  Para usar tu propio logotipo, simplemente reemplaza este archivo manteniendo
+  el nombre `logo.svg` (o actualiza la ruta en `client/src/config/brand.ts`).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="mw-bg" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+    <linearGradient id="mw-accent" x1="20" y1="24" x2="50" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#93C5FD" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#mw-bg)" />
+  <rect x="14" y="20" width="36" height="26" rx="6" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-width="2.2" />
+  <path d="M14 27C14 23.6863 16.6863 21 20 21H44C47.3137 21 50 23.6863 50 27V29H14V27Z" fill="url(#mw-accent)" fill-opacity="0.45" />
+  <rect x="35" y="30" width="17" height="10" rx="5" fill="#FFFFFF" />
+  <circle cx="40.5" cy="35" r="2.2" fill="#1D4ED8" />
+  <path d="M20 17L28 13L35 16L43 12" stroke="#93C5FD" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

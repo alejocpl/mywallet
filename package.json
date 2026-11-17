@@ -1,0 +1,51 @@
+{
+  "name": "mywallet",
+  "productName": "MyWallet",
+  "version": "1.0.0",
+  "author": "Alejandro Castro",
+  "private": true,
+  "description": "MyWallet - Administración de finanzas personales (escritorio Electron + React + Express + SQLite)",
+  "main": "electron/dist/main.js",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run typecheck -w server && node scripts/build-desktop.cjs --server",
+    "build:electron": "tsc -p electron/tsconfig.json --noEmit && node scripts/build-desktop.cjs --electron",
+    "build": "npm run build:client && npm run build:server && npm run build:electron",
+    "start": "npm run start -w server",
+    "seed": "npm run seed -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client && tsc -p electron/tsconfig.json --noEmit",
+    "electron:dev": "concurrently -k -n SERVER,CLIENT,ELECTRON -c blue,green,magenta \"npm run dev -w server\" \"npm run dev -w client\" \"wait-on http://127.0.0.1:4000/api/health http://localhost:5173 && npm run build:electron && cross-env MYWALLET_DEV=1 electron .\"",
+    "electron:start": "npm run build && electron .",
+    "rebuild:native": "electron-builder install-app-deps",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:publish": "npm run build && electron-builder --publish always"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "call-bind-apply-helpers": "^1.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "electron-updater": "^6.3.9",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.1",
+    "pdfkit": "^0.15.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.3",
+    "wait-on": "^8.0.1"
+  }
+}

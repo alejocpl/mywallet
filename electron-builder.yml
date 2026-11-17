@@ -1,0 +1,74 @@
+appId: com.mywallet.desktop
+productName: MyWallet
+copyright: Copyright © 2026 MyWallet
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - electron/dist/**/*
+  - server/dist/**/*
+  - server/package.json
+  - server/assets/**/*
+  - client/dist/**/*
+  - package.json
+  - "!electron/src/**/*"
+  - "!server/src/**/*"
+  - "!server/data/**/*"
+  - "!client/src/**/*"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!**/node_modules/.bin"
+
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/bindings/**"
+  - "**/node_modules/file-uri-to-path/**"
+  - "client/dist/**"
+  - "server/dist/**"
+  - "server/assets/**"
+
+# Configuración de Windows: instalador en un clic con acceso directo en el Escritorio
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "${productName}-Setup-${version}.${ext}"
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: MyWallet
+  runAfterFinish: true
+  # Nunca eliminar AppData/userData al desinstalar o actualizar para proteger SQLite
+  deleteAppDataOnUninstall: false
+
+# Configuración de macOS: DMG (instalación arrastrar y soltar) + ZIP (auto-actualizaciones)
+mac:
+  category: public.app-category.finance
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  artifactName: "${productName}-Setup-${version}.${ext}"
+
+dmg:
+  title: ${productName} ${version}
+
+# Canal de actualizaciones automáticas para electron-updater.
+# Reemplaza `owner` y `repo` con tu repositorio de GitHub o usa provider `generic` con tu servidor HTTPS.
+publish:
+  - provider: github
+    owner: alejocpl
+    repo: mywallet
+    releaseType: release

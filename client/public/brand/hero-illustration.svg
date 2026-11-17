@@ -1,0 +1,21 @@
+<!--
+  REEMPLAZABLE: Ilustración del panel principal ("¿Cuánto me queda?").
+  Reemplaza este archivo SVG o cambia la ruta en `client/src/config/brand.ts`.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" fill="none">
+  <rect x="16" y="18" width="288" height="184" rx="22" fill="#FFFFFF" fill-opacity="0.1" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5" />
+  <!-- Gráfico de barras ascendentes -->
+  <rect x="44" y="132" width="24" height="44" rx="6" fill="#93C5FD" fill-opacity="0.55" />
+  <rect x="80" y="108" width="24" height="68" rx="6" fill="#93C5FD" fill-opacity="0.72" />
+  <rect x="116" y="88" width="24" height="88" rx="6" fill="#BFDBFE" fill-opacity="0.88" />
+  <rect x="152" y="64" width="24" height="112" rx="6" fill="#FFFFFF" fill-opacity="0.95" />
+  <!-- Línea de tendencia -->
+  <path d="M56 112L92 88L128 70L164 46L210 58L264 34" stroke="#34D399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="264" cy="34" r="6" fill="#34D399" stroke="#FFFFFF" stroke-width="2.5" />
+  <!-- Tarjeta flotante de balance -->
+  <rect x="196" y="86" width="90" height="86" rx="14" fill="#0F172A" fill-opacity="0.32" stroke="#FFFFFF" stroke-opacity="0.25" />
+  <circle cx="241" cy="118" r="18" fill="#10B981" fill-opacity="0.25" stroke="#34D399" stroke-width="2.2" />
+  <path d="M234 118.5L239 123.5L249 112.5" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="214" y="146" width="54" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.8" />
+  <rect x="224" y="157" width="34" height="5" rx="2.5" fill="#93C5FD" fill-opacity="0.7" />
+</svg>

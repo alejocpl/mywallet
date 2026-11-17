@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="mw-bg" x1="128" y1="96" x2="928" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+    <linearGradient id="mw-accent" x1="320" y1="384" x2="800" y2="736" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#93C5FD" />
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="256" fill="url(#mw-bg)" />
+  <rect x="224" y="320" width="576" height="416" rx="96" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-width="35" />
+  <path d="M224 432C224 378.98 266.98 336 320 336H704C757.02 336 800 378.98 800 432V464H224V432Z" fill="url(#mw-accent)" fill-opacity="0.45" />
+  <rect x="560" y="480" width="272" height="160" rx="80" fill="#FFFFFF" />
+  <circle cx="648" cy="560" r="35" fill="#1D4ED8" />
+  <path d="M320 272L448 208L560 256L688 192" stroke="#93C5FD" stroke-width="38" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
