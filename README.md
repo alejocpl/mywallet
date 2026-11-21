@@ -39,7 +39,7 @@ Aplicación corporativa de escritorio para la administración de finanzas person
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/TU_USUARIO/mywallet.git
+   git clone https://github.com/alejocpl/mywallet.git
    cd mywallet
    ```
 
