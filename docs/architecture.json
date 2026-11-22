@@ -1,0 +1,487 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-11-21",
+  "purpose": "Machine-readable architectural blueprint of MyWallet designed to onboard AI coding agents implementing new features without redundant full-repo scans.",
+  "project": {
+    "name": "MyWallet",
+    "packageName": "mywallet",
+    "version": "1.0.0",
+    "author": "Alejandro Castro",
+    "repository": "https://github.com/alejocpl/mywallet",
+    "appId": "com.mywallet.desktop",
+    "description": "Personal finance desktop application (Windows & macOS) built with Electron, React, TypeScript, Tailwind CSS, Recharts, Express, and SQLite.",
+    "locale": "es-CO",
+    "currency": "COP",
+    "workspaces": ["server", "client"],
+    "stack": {
+      "desktop": ["Electron 33.2.0", "electron-builder 25.1.8", "electron-updater 6.3.9"],
+      "frontend": ["React 18.3.1", "TypeScript 5.6.3", "Vite 5.4.10", "Tailwind CSS 3.4.14", "Recharts 2.13.3", "lucide-react 0.460.0"],
+      "backend": ["Node.js 20+", "Express 4.21.1", "TypeScript 5.6.3", "better-sqlite3 11.7.0", "Zod 3.23.8", "PDFKit 0.15.1", "ExcelJS 4.4.0"],
+      "bundling": ["esbuild (scripts/build-desktop.cjs)", "Vite (client)"]
+    }
+  },
+  "agentQuickStart": {
+    "howToAddAFeature": [
+      "1. Database: Add idempotent DDL (CREATE TABLE IF NOT EXISTS / ALTER TABLE guard) in server/src/db/schema.ts inside runMigrations().",
+      "2. Backend Types: Add domain interfaces in server/src/types/index.ts.",
+      "3. Backend Module: Create server/src/modules/<feature>/ with <feature>.schema.ts (Zod), <feature>.repository.ts (better-sqlite3 prepared statements), <feature>.service.ts (business logic), <feature>.controller.ts (asyncHandler), and <feature>.routes.ts.",
+      "4. Mount Router: Register router in server/src/routes/index.ts under /api/<feature>.",
+      "5. Frontend Types & API: Mirror DTOs in client/src/types/index.ts and add typed methods in client/src/services/api.ts.",
+      "6. State & Navigation: If global or month-scoped, expose state/refresh in client/src/context/WalletContext.tsx. If adding a top-level tab, update ViewId in client/src/types/index.ts, NAV_ITEMS in client/src/config/navigation.ts, and render in client/src/App.tsx.",
+      "7. UI Implementation: Create view under client/src/features/<feature>/, reuse UI primitives from client/src/components/ui/ (especially FormattedNumberInput for COP amounts) and formatMoney() from client/src/utils/format.ts.",
+      "8. Verify: Run `npm run typecheck` and `npm run build` (which bundles server/dist/index.js and electron/dist/{main,preload}.js via esbuild)."
+    ],
+    "criticalInvariantsAndGotchas": [
+      "SQLite persistence: In production Electron, DB_PATH MUST be set by electron/src/main.ts to `<app.getPath('userData')>/data/mywallet.db` BEFORE requiring `server/dist/index.js`. Never store user DB inside the installation directory.",
+      "Native module bundling: `scripts/build-desktop.cjs` bundles server into a single CJS file (`server/dist/index.js`) with `external: ['better-sqlite3']` and copies `pdfkit/js/data/*.afm` to `server/dist/data`. Any new native C++ dependency must be added to `external` in `scripts/build-desktop.cjs` and `asarUnpack` in `electron-builder.yml`.",
+      "Express static dotfiles: `server/src/app.ts` serves `client/dist` with `{ dotfiles: 'allow' }` because paths may contain dot-prefixed folders (e.g., `.gemini`). Do not remove this option.",
+      "Onboarding lock: Once `app_settings` key `onboarding_completed` is `'1'`, the onboarding wizard permanently hides from normal UI to prevent corrupting live numbers.",
+      "Essential payments irreversibility: `POST /api/essentials/payments/:id/check` marks an installment `checked = 1` and automatically creates an expense transaction. Once checked, it cannot be unchecked.",
+      "Subcategory budget sync: Creating/updating/deleting a subcategory in `modules/categories` automatically recalculates and syncs the parent category's monthly budget (`unit_amount * frequency_month`).",
+      "Currency & number inputs: All amounts are in Colombian Pesos (COP). Use `FormattedNumberInput` for numeric inputs so thousands separators render automatically while emitting clean numeric strings.",
+      "Electron security: Keep `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`. Expose any new desktop capability exclusively via `electron/src/preload.ts` (`window.mywalletDesktop`) and `client/src/types/electron.d.ts`.",
+      "Auto-updater 404 tolerance: `electron/src/updater.ts` treats 404 / missing `latest*.yml` as `not-available` so users never see scary errors before the first GitHub Release is published.",
+      "Cross-platform packaging: `better-sqlite3` is a native addon; Windows `.exe` must be built on Windows and macOS `.dmg/.zip` on macOS (or via `.github/workflows/build-and-release.yml`)."
+    ]
+  },
+  "runtimeArchitecture": {
+    "modes": {
+      "webDev": {
+        "command": "npm run dev",
+        "server": "http://127.0.0.1:4000 (tsx watch server/src/index.ts)",
+        "client": "http://localhost:5173 (Vite dev server proxying /api -> http://127.0.0.1:4000)",
+        "database": "server/data/mywallet.db"
+      },
+      "electronDev": {
+        "command": "npm run electron:dev",
+        "env": { "MYWALLET_DEV": "1" },
+        "behavior": "Probes http://127.0.0.1:4000/api/health; loads http://localhost:5173 in BrowserWindow; spawns embedded server on :4000 if external server is not running."
+      },
+      "electronProduction": {
+        "command": "npm run electron:start (or installed .exe / .dmg)",
+        "behavior": "Electron main resolves unpacked `client/dist` and `server/dist/index.js`, sets `DB_PATH` in `userData/data/mywallet.db`, calls `startServer({ host: '127.0.0.1', port: 0, clientDistPath })`, and loads `http://127.0.0.1:<ephemeralPort>`.",
+        "databasePaths": {
+          "windows": "%APPDATA%\\MyWallet\\data\\mywallet.db",
+          "macos": "~/Library/Application Support/MyWallet/data/mywallet.db"
+        },
+        "shutdown": "`before-quit` awaits `embeddedServer.stop()` which closes all HTTP keep-alive sockets and runs `PRAGMA wal_checkpoint(TRUNCATE)` before closing SQLite."
+      }
+    },
+    "electron": {
+      "files": {
+        "electron/src/main.ts": "Single-instance lock, persistent DB path resolution, embedded Express bootstrap/shutdown, BrowserWindow creation with strict security flags, navigation/popup/webview blocking, IPC handlers.",
+        "electron/src/preload.ts": "Sandboxed preload script exposing `window.mywalletDesktop` via `contextBridge.exposeInMainWorld`.",
+        "electron/src/updater.ts": "`electron-updater` integration with GitHub Releases, silent check 6s after boot, status broadcast via `updater:status`."
+      },
+      "securityFlags": {
+        "nodeIntegration": false,
+        "contextIsolation": true,
+        "sandbox": true,
+        "webSecurity": true,
+        "allowRunningInsecureContent": false,
+        "popups": "denied via setWindowOpenHandler",
+        "navigation": "restricted to windowUrl & apiBaseUrl origins via will-navigate",
+        "webview": "globally blocked via will-attach-webview"
+      },
+      "preloadBridge": {
+        "globalName": "window.mywalletDesktop",
+        "properties": ["isDesktop", "platform", "appVersion", "apiBaseUrl", "dbPath"],
+        "methods": [
+          { "name": "checkForUpdates()", "ipcChannel": "updater:check", "direction": "renderer -> main (invoke)" },
+          { "name": "installUpdate()", "ipcChannel": "updater:install", "direction": "renderer -> main (invoke)" },
+          { "name": "openDataFolder()", "ipcChannel": "app:open-data-folder", "direction": "renderer -> main (invoke)" },
+          { "name": "onUpdateStatus(cb)", "ipcChannel": "updater:status", "direction": "main -> renderer (event)" }
+        ],
+        "internalChannels": [
+          { "ipcChannel": "app:get-desktop-config", "direction": "renderer -> main (sendSync fallback)" }
+        ]
+      }
+    }
+  },
+  "database": {
+    "engine": "SQLite via better-sqlite3",
+    "pragmas": ["journal_mode = WAL", "foreign_keys = ON"],
+    "shutdownPragma": "wal_checkpoint(TRUNCATE)",
+    "files": {
+      "connection": "server/src/db/connection.ts",
+      "schema": "server/src/db/schema.ts",
+      "defaultCategories": "server/src/db/defaultCategories.ts",
+      "seedCli": "server/src/db/seed.ts",
+      "seedData": "server/src/db/seedData.ts"
+    },
+    "tables": [
+      {
+        "name": "categories",
+        "purpose": "Income and expense categories (18 defaults seeded automatically, including Investments and Debt).",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "name", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "type", "type": "TEXT", "constraints": "NOT NULL CHECK(type IN ('income','expense'))" },
+          { "name": "icon", "type": "TEXT", "constraints": "NOT NULL DEFAULT 'more'" },
+          { "name": "color", "type": "TEXT", "constraints": "NOT NULL DEFAULT '#64748B'" },
+          { "name": "expense_group", "type": "TEXT", "constraints": "CHECK(expense_group IN ('needs','wants','savings'))" },
+          { "name": "is_default", "type": "INTEGER", "constraints": "NOT NULL DEFAULT 0" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [["name", "type"]],
+        "foreignKeys": [],
+        "indexes": []
+      },
+      {
+        "name": "subcategories",
+        "purpose": "Itemized recurring items under a category (e.g., Spotify, haircuts, stocks/real estate under Investments) that sum into the parent budget.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "category_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "name", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "unit_amount", "type": "REAL", "constraints": "NOT NULL CHECK(unit_amount >= 0)" },
+          { "name": "frequency_month", "type": "INTEGER", "constraints": "NOT NULL DEFAULT 1 CHECK(frequency_month >= 1)" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [["category_id", "name"]],
+        "foreignKeys": [{ "column": "category_id", "references": "categories(id)", "onDelete": "CASCADE" }],
+        "indexes": ["idx_subcategories_category(category_id)"]
+      },
+      {
+        "name": "transactions",
+        "purpose": "Ledger of all income and expense movements.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "type", "type": "TEXT", "constraints": "NOT NULL CHECK(type IN ('income','expense'))" },
+          { "name": "amount", "type": "REAL", "constraints": "NOT NULL CHECK(amount > 0)" },
+          { "name": "category_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "description", "type": "TEXT", "constraints": "NOT NULL DEFAULT ''" },
+          { "name": "date", "type": "TEXT", "constraints": "NOT NULL (YYYY-MM-DD)" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [{ "column": "category_id", "references": "categories(id)", "onDelete": "RESTRICT" }],
+        "indexes": ["idx_transactions_date(date)", "idx_transactions_category(category_id)"]
+      },
+      {
+        "name": "budgets",
+        "purpose": "Monthly spending cap per expense category.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "category_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "month", "type": "TEXT", "constraints": "NOT NULL (YYYY-MM)" },
+          { "name": "amount", "type": "REAL", "constraints": "NOT NULL CHECK(amount > 0)" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [["category_id", "month"]],
+        "foreignKeys": [{ "column": "category_id", "references": "categories(id)", "onDelete": "CASCADE" }],
+        "indexes": []
+      },
+      {
+        "name": "goals",
+        "purpose": "Savings targets with deadlines and progress tracking.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "name", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "target_amount", "type": "REAL", "constraints": "NOT NULL CHECK(target_amount > 0)" },
+          { "name": "current_amount", "type": "REAL", "constraints": "NOT NULL DEFAULT 0" },
+          { "name": "deadline", "type": "TEXT", "constraints": "NULLABLE (YYYY-MM-DD)" },
+          { "name": "icon", "type": "TEXT", "constraints": "NOT NULL DEFAULT 'piggy-bank'" },
+          { "name": "color", "type": "TEXT", "constraints": "NOT NULL DEFAULT '#2563EB'" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [],
+        "indexes": []
+      },
+      {
+        "name": "goal_contributions",
+        "purpose": "History of deposits (positive) and withdrawals (negative) for each savings goal.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "goal_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "amount", "type": "REAL", "constraints": "NOT NULL" },
+          { "name": "date", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "note", "type": "TEXT", "constraints": "NOT NULL DEFAULT ''" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [{ "column": "goal_id", "references": "goals(id)", "onDelete": "CASCADE" }],
+        "indexes": ["idx_contributions_date(date)"]
+      },
+      {
+        "name": "debts",
+        "purpose": "Personal debts with interest rate, monthly payment, due day, and avalanche prioritization.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "name", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "creditor", "type": "TEXT", "constraints": "NOT NULL DEFAULT ''" },
+          { "name": "total_amount", "type": "REAL", "constraints": "NOT NULL CHECK(total_amount > 0)" },
+          { "name": "remaining_amount", "type": "REAL", "constraints": "NOT NULL CHECK(remaining_amount >= 0)" },
+          { "name": "interest_rate", "type": "REAL", "constraints": "NOT NULL DEFAULT 0" },
+          { "name": "monthly_payment", "type": "REAL", "constraints": "NOT NULL DEFAULT 0" },
+          { "name": "due_day", "type": "INTEGER", "constraints": "CHECK(due_day BETWEEN 1 AND 31)" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [],
+        "indexes": []
+      },
+      {
+        "name": "debt_payments",
+        "purpose": "Payments applied to debts, optionally linked to an auto-created expense transaction.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "debt_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "transaction_id", "type": "INTEGER", "constraints": "NULLABLE" },
+          { "name": "amount", "type": "REAL", "constraints": "NOT NULL CHECK(amount > 0)" },
+          { "name": "date", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [
+          { "column": "debt_id", "references": "debts(id)", "onDelete": "CASCADE" },
+          { "column": "transaction_id", "references": "transactions(id)", "onDelete": "SET NULL" }
+        ],
+        "indexes": []
+      },
+      {
+        "name": "app_settings",
+        "purpose": "Key-value application state (e.g., onboarding_completed).",
+        "columns": [
+          { "name": "key", "type": "TEXT", "constraints": "PRIMARY KEY" },
+          { "name": "value", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "updated_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [],
+        "foreignKeys": [],
+        "indexes": []
+      },
+      {
+        "name": "essential_plans",
+        "purpose": "Recurring monthly payment plans for essential categories (Vivienda, Salud, Alimentación, Servicios, Transporte).",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "category_id", "type": "INTEGER", "constraints": "NOT NULL UNIQUE" },
+          { "name": "unit_amount", "type": "REAL", "constraints": "NOT NULL CHECK(unit_amount > 0)" },
+          { "name": "frequency_month", "type": "INTEGER", "constraints": "NOT NULL DEFAULT 1 CHECK(frequency_month >= 1 AND frequency_month <= 31)" },
+          { "name": "is_variable", "type": "INTEGER", "constraints": "NOT NULL DEFAULT 0" },
+          { "name": "created_at", "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        ],
+        "unique": [["category_id"]],
+        "foreignKeys": [{ "column": "category_id", "references": "categories(id)", "onDelete": "CASCADE" }],
+        "indexes": []
+      },
+      {
+        "name": "essential_payments",
+        "purpose": "Monthly installment checklist rows generated from essential_plans; once checked=1 they are permanently locked.",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          { "name": "plan_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "category_id", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "month", "type": "TEXT", "constraints": "NOT NULL" },
+          { "name": "installment_num", "type": "INTEGER", "constraints": "NOT NULL" },
+          { "name": "expected_amount", "type": "REAL", "constraints": "NOT NULL CHECK(expected_amount > 0)" },
+          { "name": "paid_amount", "type": "REAL", "constraints": "NULLABLE" },
+          { "name": "checked", "type": "INTEGER", "constraints": "NOT NULL DEFAULT 0 CHECK(checked IN (0,1))" },
+          { "name": "checked_at", "type": "TEXT", "constraints": "NULLABLE" },
+          { "name": "transaction_id", "type": "INTEGER", "constraints": "NULLABLE" }
+        ],
+        "unique": [["plan_id", "month", "installment_num"]],
+        "foreignKeys": [
+          { "column": "plan_id", "references": "essential_plans(id)", "onDelete": "CASCADE" },
+          { "column": "category_id", "references": "categories(id)", "onDelete": "CASCADE" },
+          { "column": "transaction_id", "references": "transactions(id)", "onDelete": "SET NULL" }
+        ],
+        "indexes": ["idx_essential_payments_month(month)"]
+      }
+    ]
+  },
+  "backend": {
+    "pattern": "Layered Modular Architecture (routes -> controller -> service -> repository) with Zod validation and centralized errorHandler.",
+    "entryPoint": "server/src/index.ts",
+    "appFactory": "server/src/app.ts",
+    "routerRoot": "server/src/routes/index.ts",
+    "config": {
+      "server/src/config/brand.ts": "Brand constants & PDF logo path resolver.",
+      "server/src/config/env.ts": "Typed env getters and dynamic resolveDbPath().",
+      "server/src/config/finance.ts": "FINANCE_RULES (budgetWarningThreshold: 0.8, 50/30/20 rule, maxDebtToIncome: 0.36, 6-month trend) and DEBT_CATEGORY_NAME."
+    },
+    "middlewares": {
+      "server/src/middlewares/errorHandler.ts": "Maps ZodError -> 400, HttpError -> statusCode, SQLITE_CONSTRAINT -> 409, fallback -> 500."
+    },
+    "modules": [
+      {
+        "name": "system",
+        "path": "server/src/routes/index.ts",
+        "endpoints": [
+          { "method": "GET", "path": "/api/health", "summary": "Health check returning status, mode, version, timestamp." },
+          { "method": "POST", "path": "/api/seed", "summary": "Wipes and seeds 6-month COP demo dataset." }
+        ]
+      },
+      {
+        "name": "onboarding",
+        "path": "server/src/modules/onboarding/",
+        "files": ["onboarding.routes.ts", "onboarding.controller.ts", "onboarding.schema.ts", "onboarding.service.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/onboarding/status", "summary": "Returns { completed, hasData }." },
+          { "method": "POST", "path": "/api/onboarding", "summary": "Completes initial financial setup (incomes, expenses, subcategories, essentialPlans, debts, goals) and locks onboarding." },
+          { "method": "POST", "path": "/api/onboarding/skip", "summary": "Marks onboarding completed without initial records." },
+          { "method": "POST", "path": "/api/onboarding/reset", "summary": "Clears user data and resets onboarding flag." }
+        ]
+      },
+      {
+        "name": "categories",
+        "path": "server/src/modules/categories/",
+        "files": ["categories.routes.ts", "categories.controller.ts", "categories.schema.ts", "categories.service.ts", "categories.repository.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/categories", "query": ["type?"], "summary": "Lists categories with nested subcategories." },
+          { "method": "POST", "path": "/api/categories", "summary": "Creates a new income or expense category." },
+          { "method": "PUT", "path": "/api/categories/:id", "summary": "Updates category metadata." },
+          { "method": "DELETE", "path": "/api/categories/:id", "summary": "Deletes category." },
+          { "method": "POST", "path": "/api/categories/:id/subcategories", "summary": "Adds subcategory and syncs parent monthly budget." },
+          { "method": "PUT", "path": "/api/categories/subcategories/:subId", "summary": "Updates subcategory and syncs parent monthly budget." },
+          { "method": "DELETE", "path": "/api/categories/subcategories/:subId", "query": ["month?"], "summary": "Deletes subcategory and returns updated parent category." }
+        ]
+      },
+      {
+        "name": "transactions",
+        "path": "server/src/modules/transactions/",
+        "files": ["transactions.routes.ts", "transactions.controller.ts", "transactions.schema.ts", "transactions.service.ts", "transactions.repository.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/transactions", "query": ["month?", "type?", "categoryId?", "search?", "limit?"], "summary": "Lists filtered transactions." },
+          { "method": "GET", "path": "/api/transactions/:id", "summary": "Gets single transaction by ID." },
+          { "method": "POST", "path": "/api/transactions", "summary": "Creates transaction and evaluates budget alert." },
+          { "method": "PUT", "path": "/api/transactions/:id", "summary": "Updates transaction and re-evaluates budget alert." },
+          { "method": "DELETE", "path": "/api/transactions/:id", "summary": "Deletes transaction." }
+        ]
+      },
+      {
+        "name": "budgets",
+        "path": "server/src/modules/budgets/",
+        "files": ["budgets.routes.ts", "budgets.controller.ts", "budgets.schema.ts", "budgets.service.ts", "budgets.repository.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/budgets", "query": ["month?"], "summary": "Returns monthly budgets overview, spent amounts, totals, and alerts." },
+          { "method": "POST", "path": "/api/budgets", "summary": "Upserts monthly budget for a category." },
+          { "method": "POST", "path": "/api/budgets/copy", "summary": "Copies budgets from source month (default previous) to toMonth." },
+          { "method": "PUT", "path": "/api/budgets/:id", "summary": "Updates budget limit amount." },
+          { "method": "DELETE", "path": "/api/budgets/:id", "summary": "Deletes budget." }
+        ]
+      },
+      {
+        "name": "essentials",
+        "path": "server/src/modules/essentials/",
+        "files": ["essentials.routes.ts", "essentials.controller.ts", "essentials.schema.ts", "essentials.service.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/essentials", "query": ["month?"], "summary": "Returns monthly essential plans and auto-generated installment rows." },
+          { "method": "POST", "path": "/api/essentials/payments/:id/check", "summary": "Irreversibly checks off an installment, records expense transaction, and returns updated checklist + alert." }
+        ]
+      },
+      {
+        "name": "goals",
+        "path": "server/src/modules/goals/",
+        "files": ["goals.routes.ts", "goals.controller.ts", "goals.schema.ts", "goals.service.ts", "goals.repository.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/goals", "summary": "Lists savings goals with progress % and required monthly saving." },
+          { "method": "POST", "path": "/api/goals", "summary": "Creates a savings goal." },
+          { "method": "PUT", "path": "/api/goals/:id", "summary": "Updates a savings goal." },
+          { "method": "DELETE", "path": "/api/goals/:id", "summary": "Deletes a savings goal." },
+          { "method": "GET", "path": "/api/goals/:id/contributions", "summary": "Lists contribution/withdrawal history for a goal." },
+          { "method": "POST", "path": "/api/goals/:id/contributions", "summary": "Adds a deposit (+) or withdrawal (-) to a goal." }
+        ]
+      },
+      {
+        "name": "debts",
+        "path": "server/src/modules/debts/",
+        "files": ["debts.routes.ts", "debts.controller.ts", "debts.schema.ts", "debts.service.ts", "debts.repository.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/debts", "summary": "Lists debts, totals, and avalanche priorityDebtId." },
+          { "method": "POST", "path": "/api/debts", "summary": "Creates a debt." },
+          { "method": "PUT", "path": "/api/debts/:id", "summary": "Updates a debt." },
+          { "method": "DELETE", "path": "/api/debts/:id", "summary": "Deletes a debt." },
+          { "method": "POST", "path": "/api/debts/:id/payments", "summary": "Records debt payment and creates an expense transaction in Deudas category." }
+        ]
+      },
+      {
+        "name": "summary",
+        "path": "server/src/modules/summary/",
+        "files": ["summary.routes.ts", "summary.controller.ts", "summary.service.ts", "summary.repository.ts", "summary.insights.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/summary", "query": ["month?"], "summary": "Dashboard summary: totals, available money, dailyAllowance, 50/30/20 breakdown, alerts, financial insights." },
+          { "method": "GET", "path": "/api/summary/trend", "query": ["month?", "months?"], "summary": "Multi-month cashflow trend (2..24 months)." },
+          { "method": "GET", "path": "/api/summary/comparison", "query": ["month?"], "summary": "Current vs previous month category comparison." }
+        ]
+      },
+      {
+        "name": "reports",
+        "path": "server/src/modules/reports/",
+        "files": ["reports.routes.ts", "reports.controller.ts", "reports.service.ts", "generators/pdf.generator.ts", "generators/excel.generator.ts"],
+        "endpoints": [
+          { "method": "GET", "path": "/api/reports/pdf", "query": ["month?"], "summary": "Streams corporate PDF report (MyWallet-reporte-YYYY-MM.pdf)." },
+          { "method": "GET", "path": "/api/reports/excel", "query": ["month?"], "summary": "Streams 7-sheet Excel workbook (MyWallet-reporte-YYYY-MM.xlsx)." }
+        ]
+      }
+    ]
+  },
+  "frontend": {
+    "entryPoint": "client/src/main.tsx",
+    "rootShell": "client/src/App.tsx",
+    "stateManagement": {
+      "file": "client/src/context/WalletContext.tsx",
+      "exports": ["WalletProvider", "useWallet"],
+      "managedState": [
+        "view (dashboard | transactions | budgets | goals | reports)",
+        "month (YYYY-MM)",
+        "onboardingCompleted (boolean | null)",
+        "summary, trend, comparison, categories, transactions, budgets, goals, debts, essentials",
+        "transactionModal (open, presetType, editingTransaction)",
+        "toasts (success, warning, error, info)"
+      ]
+    },
+    "apiClient": {
+      "file": "client/src/services/api.ts",
+      "baseUrlResolution": "Uses `window.mywalletDesktop?.apiBaseUrl` in Electron desktop mode, otherwise `/api`.",
+      "namespaces": ["categoriesApi", "transactionsApi", "budgetsApi", "goalsApi", "debtsApi", "summaryApi", "reportsApi", "demoApi", "essentialsApi", "onboardingApi"]
+    },
+    "views": [
+      { "id": "onboarding", "component": "client/src/features/onboarding/OnboardingWizard.tsx", "purpose": "One-time setup survey gating the app until completed." },
+      { "id": "dashboard", "component": "client/src/features/dashboard/DashboardView.tsx", "purpose": "Available balance hero, daily allowance, KPI cards, 50/30/20 rule, insights, essential checklist, trend & category charts." },
+      { "id": "transactions", "component": "client/src/features/transactions/TransactionsView.tsx", "purpose": "Filterable monthly ledger with TransactionModal & CategoryModal." },
+      { "id": "budgets", "component": "client/src/features/budgets/BudgetsView.tsx", "purpose": "Monthly category budgets, subcategory builder with monthly frequency sum, copy previous month, essential checklist." },
+      { "id": "goals", "component": "client/src/features/goals/GoalsAndDebtsView.tsx", "purpose": "Tabbed view for savings goals (contributions/history) and debts (avalanche priority/payments)." },
+      { "id": "reports", "component": "client/src/features/reports/ReportsView.tsx", "purpose": "PDF/Excel export triggers and month-over-month comparison chart & table." }
+    ],
+    "components": {
+      "layout": ["client/src/components/layout/Header.tsx", "client/src/components/layout/FloatingDock.tsx"],
+      "charts": ["client/src/components/charts/CashflowTrendChart.tsx", "client/src/components/charts/ExpenseCategoryChart.tsx", "client/src/components/charts/MonthComparisonChart.tsx"],
+      "essentials": ["client/src/components/essentials/EssentialChecklistCard.tsx"],
+      "ui": [
+        "client/src/components/ui/BrandLogo.tsx",
+        "client/src/components/ui/Card.tsx",
+        "client/src/components/ui/EmptyState.tsx",
+        "client/src/components/ui/FormattedNumberInput.tsx",
+        "client/src/components/ui/Modal.tsx",
+        "client/src/components/ui/ProgressBar.tsx",
+        "client/src/components/ui/StatCard.tsx",
+        "client/src/components/ui/ToastContainer.tsx"
+      ]
+    },
+    "configAndUtils": {
+      "client/src/config/brand.ts": "Brand identity, COP/es-CO config, replaceable SVG asset paths in client/public/brand/.",
+      "client/src/config/navigation.ts": "NAV_ITEMS for FloatingDock.",
+      "client/src/config/icons.ts": "ICON_MAP, ICON_OPTIONS, COLOR_PALETTE, CategoryIcon.",
+      "client/src/utils/format.ts": "formatMoney, formatMoneyCompact, formatThousandsInput, parseThousandsInput, formatPercent, formatDate, month helpers.",
+      "client/src/types/index.ts": "Frontend domain interfaces and ViewId.",
+      "client/src/types/electron.d.ts": "Type declarations for window.mywalletDesktop."
+    }
+  },
+  "buildAndRelease": {
+    "scripts": {
+      "dev": "Runs server + client in parallel for web development.",
+      "electron:dev": "Runs server + client + Electron window in dev mode.",
+      "build": "Builds client (Vite), server (esbuild + pdfkit .afm), and electron (esbuild main + preload).",
+      "typecheck": "Typechecks server, client, and electron tsconfigs.",
+      "dist:win": "Builds and packages Windows NSIS one-click .exe installer into release/.",
+      "dist:mac": "Builds and packages macOS .dmg and .zip (arm64 + x64) into release/."
+    },
+    "bundlerScript": "scripts/build-desktop.cjs",
+    "builderConfig": "electron-builder.yml",
+    "ciWorkflow": ".github/workflows/build-and-release.yml",
+    "releaseTrigger": "Push git tag matching `v*` (e.g. `git tag v1.0.0 && git push origin v1.0.0`) or manual `workflow_dispatch`."
+  }
+}

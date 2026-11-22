@@ -71,6 +71,13 @@ npm run dist:mac
 
 ---
 
+## 🗺️ Documentación de Arquitectura
+
+- **Para humanos (visual e interactiva):** [`docs/architecture.html`](docs/architecture.html) — Ábrelo directamente en cualquier navegador para ver el diagrama de flujo, estructura de carpetas, catálogo filtrable de los 41 endpoints API, esquema SQLite de 11 tablas y pipeline de Electron/CI.
+- **Para agentes IA:** [`docs/architecture.json`](docs/architecture.json) — Mapa estructurado en JSON con rutas, contratos de módulos, esquema de base de datos, invariantes críticas y guía paso a paso para desarrollar nuevas features.
+
+---
+
 ## 🤖 Integración Continua (CI/CD)
 
 El repositorio incluye un flujo automatizado en `.github/workflows/build-and-release.yml` que compila automáticamente los instaladores de Windows y Mac cada vez que creas una etiqueta de versión (ejemplo: `v1.0.0`).
